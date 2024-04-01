@@ -18,8 +18,16 @@ export default {
       camera: null,
       renderer: null,
       controls: null,
-      pointsList: [],
+      bufferGeometry: null,
       objIndex: 0,
+      particalNum: 50000, // 设置粒子数量
+      particalCompleteStep: 0,
+      positions: [],
+      modeSrcList: [
+        '../static/gltfModel/phoenix_bird.glb',
+        '../static/gltfModel/generic_police_car.glb',
+        '../static/gltfModel/venice_mask.glb',
+      ],
     }
   },
   mounted() {
@@ -41,69 +49,59 @@ export default {
       this.controls.update();
       document.body.appendChild(this.renderer.domElement);
        // 创建环境光
-      const ambientLight = new THREE.AmbientLight(0xff0000, 0.1)
-      this.scene.add(ambientLight)
-      // 加载3D模型
-      this.loadObj();
-      // 初始化首图
-      this.tweenObj();
-      this.controls.enablePan = false;
-      this.controls.enableZoom = false;
-      this.controls.maxPolarAngle = Math.PI / 3;
-      //事件监听
-      window.addEventListener('resize', this.onWindowResize, false);
-    },
-    loadObj() {
-      const loader = new GLTFLoader();
+      const ambientLight = new THREE.AmbientLight(0xff0000, 0.1);
+      this.scene.add(ambientLight);
+      // 初始化粒子
+      this.positions = new Float32Array(this.particalNum * 3);
+      const scales = new Float32Array(this.particalNum);
+      for(let i=0; i<this.particalNum; i++){
+        //弄一堆坐标在-400~400之间的随时数字;
+        let x = THREE.MathUtils.randFloatSpread(800);
+        let y = THREE.MathUtils.randFloatSpread(800);
+        let z = THREE.MathUtils.randFloatSpread(800);
+        this.positions[i] = x;
+        this.positions[i+1] = y;
+        this.positions[i+2] = z;
+        const size = THREE.MathUtils.randFloatSpread(12);                 
+        scales[i] = size;
+      }
+      this.bufferGeometry = new THREE.BufferGeometry();               
+      this.bufferGeometry.setAttribute( 'position', new THREE.BufferAttribute(this.positions, 3));
+      this.bufferGeometry.setAttribute( 'scale', new THREE.BufferAttribute(scales, 1));
+      this.bufferGeometry.center();
       // 初始化贴图
       const textureLoader = new THREE.TextureLoader();
       textureLoader.crossOrigin = '';
       const mapDot = textureLoader.load('../static/textures/gradient.png');  // 圆点
-      loader.load('../static/gltfModel/shiba.glb', gltf => {
-         // 获取模型顶点数据，并将其转换成 Points 类型
-         const positions = this.combineBuffer(gltf.scene, 'position')
-         const geometry = new THREE.BufferGeometry();
-         geometry.setAttribute('position', positions);
-         const material = new THREE.PointsMaterial({
-            size: 1,
-            sizeAttenuation: true,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1,
-            map: mapDot
-          });
-          const points = new THREE.Points(geometry, material);
-          geometry.scale(200, 200, 200);
-          geometry.center();
-          geometry.rotateX(0.2);
-          geometry.rotateY(1.5);
-          geometry.rotateZ(1.5);
-          // geometry.translate(200, 0, 0);
-          this.pointsList.push(points);
-      }, undefined, function ( error ) {
-        console.error( error );
+      const material = new THREE.PointsMaterial({
+        size: 1,
+        sizeAttenuation: true,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 1,
+        map: mapDot
       });
-      loader.load('../static/gltfModel/phoenix_bird.glb', gltf => {
-         // 获取模型顶点数据，并将其转换成 Points 类型
-         const positions = this.combineBuffer(gltf.scene, 'position')
-         const geometry = new THREE.BufferGeometry();
-         geometry.setAttribute('position', positions);
-         const material = new THREE.PointsMaterial({
-            size: 1,
-            sizeAttenuation: true,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1,
-            map: mapDot
-          });
-          const points = new THREE.Points(geometry, material);
-          geometry.center();
-          // geometry.rotateX(0.2);
-          geometry.rotateY(3);
-          // geometry.rotateZ(1.5);
-          this.pointsList.push(points);
-      }, undefined, function ( error ) {
-        console.error( error );
+      const points = new THREE.Points(this.bufferGeometry, material);
+      this.scene.add(points);
+      // 加载3D模型
+      this.loadObj(0);
+      //事件监听
+      window.addEventListener('resize', this.onWindowResize, false);
+    },
+    loadObj(index){
+      const objSrc = this.modeSrcList[index]
+      this.particalCompleteStep = 0;
+      const loader = new GLTFLoader();
+      loader.load(objSrc, object => {
+        console.log('object', object);
+        object.scene.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.center();
+          }
+        });
+        const startPositions = this.bufferGeometry.getAttribute('position');                            
+        const destPosition = this.combineBuffer(object.scene, 'position');
+        this.tweenObj(startPositions, destPosition)
       });
     },
     combineBuffer(model, bufferName) {
@@ -125,40 +123,59 @@ export default {
       });
       return new THREE.BufferAttribute(combined, 3);
     },
-    tweenObj() {
-      new TWEEN.Tween().onUpdate((obj) => {
-        this.scene.clear();
-        this.scene.add(this.pointsList[this.objIndex]);
-      })
-      .start();
-    },
     changeModel() {
-      if (this.objIndex < this.pointsList.length - 1) {
+      if (this.objIndex < this.modeSrcList.length - 1) {
         this.objIndex++;
       } else {
         this.objIndex = 0;
       }
-      this.tweenObj();
+      this.loadObj(this.objIndex);
     },
-    onWindowResize() {
+    tweenObj(startPositions, destPosition) {
+      for(let i = 0; i< startPositions.count; i++) {
+          const tween = new TWEEN.Tween(this.positions);
+          const cur = i % destPosition.count;
+          let percent = 1;
+          if (this.objIndex === 0) {
+            percent = 0.8;
+          }
+          if (this.objIndex === 1) {
+            percent = 2;
+          }
+          if (this.objIndex === 2) {
+            percent = 120;
+          }
+          if (this.objIndex === 3) {
+            percent = 0.5;
+          }
+          tween.to({
+              [i * 3]: destPosition.array[cur * 3] * percent,
+              [i * 3 + 1]: destPosition.array[cur * 3 + 1] * percent,
+              [i * 3 + 2]: destPosition.array[cur * 3 + 2] * percent,
+          }, 1000);
+          tween.easing(TWEEN.Easing.Exponential.InOut);
+          tween.delay(1000);
+          tween.onUpdate(() => {
+            startPositions.needsUpdate = true;                 
+          });              
+          tween.start();
+      }
+  },
+  onWindowResize() {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-    },
-    render() {
+  },
+  render() {
       TWEEN.update();
-      this.camera.lookAt(this.scene.position);
       this.renderer.render(this.scene, this.camera);
-    },
-    animate() {
+  },
+  animate() {
       this.render();
-      this.controls.enablePan = false;
-      this.controls.enableZoom = false;
-      this.controls.maxPolarAngle = Math.PI / 3;
       this.controls.update();
       requestAnimationFrame(this.animate);
-    },
   },
+},
 }
 </script>
 
