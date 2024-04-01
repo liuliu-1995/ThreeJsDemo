@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-   
+    <a id="modelChangeBtn" @click="changeModel">切换模型</a>
   </div>
 </template>
 
@@ -46,10 +46,8 @@ export default {
       // 加载3D模型
       this.loadObj();
       // 初始化首图
-      this.tweenObj(this.objIndex);
+      this.tweenObj();
       //事件监听
-      document.addEventListener("mousewheel", this.onDocumentMouseWheel, false);
-      document.addEventListener("keydown", this.onDocumentKeyDown, false);
       window.addEventListener('resize', this.onWindowResize, false);
     },
     loadObj() {
@@ -123,24 +121,20 @@ export default {
       });
       return new THREE.BufferAttribute(combined, 3);
     },
-    tweenObj(index) {
-      new TWEEN.Tween().onUpdate((obj) => { 
+    tweenObj() {
+      new TWEEN.Tween().onUpdate((obj) => {
         this.scene.clear();
         this.scene.add(this.glist[this.objIndex]);
       })
       .start();
     },
-    onDocumentKeyDown(event) {
-      if (event.which == 40 && this.objIndex < 1) {
+    changeModel() {
+      if (this.objIndex < this.glist.length - 1) {
         this.objIndex++;
-        this.tweenObj(this.objIndex);
-      } else if (event.which == 38 && this.objIndex > 0) {
-        this.objIndex--;
-        this.tweenObj(this.objIndex);
+      } else {
+        this.objIndex = 0;
       }
-    },
-    onDocumentMouseWheel(event) {
-      this.camera.position.z += event.deltaY;
+      this.tweenObj();
     },
     onWindowResize() {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -171,5 +165,13 @@ body {
   text-align: center;
   font-weight: bold;
   text-align: center;
+}
+#modelChangeBtn{
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  font-size:18px;
+  color: #fff;
+  cursor: pointer;
 }
 </style>
