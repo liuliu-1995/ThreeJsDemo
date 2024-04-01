@@ -18,7 +18,7 @@ export default {
       camera: null,
       renderer: null,
       controls: null,
-      glist: [],
+      pointsList: [],
       objIndex: 0,
     }
   },
@@ -47,6 +47,9 @@ export default {
       this.loadObj();
       // 初始化首图
       this.tweenObj();
+      this.controls.enablePan = false;
+      this.controls.enableZoom = false;
+      this.controls.maxPolarAngle = Math.PI / 3;
       //事件监听
       window.addEventListener('resize', this.onWindowResize, false);
     },
@@ -75,7 +78,8 @@ export default {
           geometry.rotateX(0.2);
           geometry.rotateY(1.5);
           geometry.rotateZ(1.5);
-          this.glist.push(points)
+          // geometry.translate(200, 0, 0);
+          this.pointsList.push(points);
       }, undefined, function ( error ) {
         console.error( error );
       });
@@ -97,7 +101,7 @@ export default {
           // geometry.rotateX(0.2);
           geometry.rotateY(3);
           // geometry.rotateZ(1.5);
-          this.glist.push(points)
+          this.pointsList.push(points);
       }, undefined, function ( error ) {
         console.error( error );
       });
@@ -124,12 +128,12 @@ export default {
     tweenObj() {
       new TWEEN.Tween().onUpdate((obj) => {
         this.scene.clear();
-        this.scene.add(this.glist[this.objIndex]);
+        this.scene.add(this.pointsList[this.objIndex]);
       })
       .start();
     },
     changeModel() {
-      if (this.objIndex < this.glist.length - 1) {
+      if (this.objIndex < this.pointsList.length - 1) {
         this.objIndex++;
       } else {
         this.objIndex = 0;
@@ -147,8 +151,11 @@ export default {
       this.renderer.render(this.scene, this.camera);
     },
     animate() {
-      this.controls.update();
       this.render();
+      this.controls.enablePan = false;
+      this.controls.enableZoom = false;
+      this.controls.maxPolarAngle = Math.PI / 3;
+      this.controls.update();
       requestAnimationFrame(this.animate);
     },
   },
