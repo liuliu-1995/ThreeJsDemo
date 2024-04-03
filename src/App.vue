@@ -46,6 +46,16 @@ export default {
       this.renderer.setPixelRatio(window.devicePixelRatio);
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+      this.controls.enablePan = false; //禁止右键拖拽
+      // this.controls.enableRotate = false; //禁止旋转
+      this.controls.minDistance = 200; // 设置相机最小距离
+      this.controls.maxDistance = 250; // 设置相机最大距离
+      this.controls.minZoom = 0.8; // 缩放
+      this.controls.maxZoom  = 1.2; // 缩放
+      this.controls.minPolarAngle = -Math.PI / 4; // 上下滚动最大角度
+      this.controls.maxPolarAngle = Math.PI / 4; // 上下滚动最大角度
+      this.controls.minAzimuthAngle = -Math.PI / 4; // 左右滚动最大角度
+      this.controls.maxAzimuthAngle = Math.PI / 4;
       this.controls.update();
       document.body.appendChild(this.renderer.domElement);
        // 创建环境光
@@ -62,10 +72,10 @@ export default {
         this.positions[i] = x;
         this.positions[i+1] = y;
         this.positions[i+2] = z;
-        const size = THREE.MathUtils.randFloatSpread(12);                 
+        const size = THREE.MathUtils.randFloatSpread(12);
         scales[i] = size;
       }
-      this.bufferGeometry = new THREE.BufferGeometry();               
+      this.bufferGeometry = new THREE.BufferGeometry();
       this.bufferGeometry.setAttribute( 'position', new THREE.BufferAttribute(this.positions, 3));
       this.bufferGeometry.setAttribute( 'scale', new THREE.BufferAttribute(scales, 1));
       this.bufferGeometry.center();
@@ -96,10 +106,20 @@ export default {
         console.log('object', object);
         object.scene.traverse((child) => {
           if (child.isMesh) {
-            child.geometry.center();
+            if (this.objIndex === 1) {
+              child.geometry.center();
+              child.geometry.rotateX(-Math.PI / 6);
+              child.geometry.rotateY(-Math.PI / 6);
+              child.geometry.rotateZ(-Math.PI / 6);
+            } else {
+              child.geometry.center();
+            }
           }
         });
-        const startPositions = this.bufferGeometry.getAttribute('position');                            
+        if (this.objIndex === 1) {
+          object.scene.scale.set(1000, 1000, 1000)
+        }
+        const startPositions = this.bufferGeometry.getAttribute('position');
         const destPosition = this.combineBuffer(object.scene, 'position');
         this.tweenObj(startPositions, destPosition)
       });
@@ -145,9 +165,6 @@ export default {
           if (this.objIndex === 2) {
             percent = 120;
           }
-          if (this.objIndex === 3) {
-            percent = 0.5;
-          }
           tween.to({
               [i * 3]: destPosition.array[cur * 3] * percent,
               [i * 3 + 1]: destPosition.array[cur * 3 + 1] * percent,
@@ -156,8 +173,8 @@ export default {
           tween.easing(TWEEN.Easing.Exponential.InOut);
           tween.delay(1000);
           tween.onUpdate(() => {
-            startPositions.needsUpdate = true;                 
-          });              
+            startPositions.needsUpdate = true;
+          });
           tween.start();
       }
   },
