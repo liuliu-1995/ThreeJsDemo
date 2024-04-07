@@ -169,7 +169,7 @@ export default {
               [i * 3]: destPosition.array[cur * 3] * percent,
               [i * 3 + 1]: destPosition.array[cur * 3 + 1] * percent,
               [i * 3 + 2]: destPosition.array[cur * 3 + 2] * percent,
-          }, 1000);
+          }, Math.random() * 1500);
           tween.easing(TWEEN.Easing.Exponential.InOut);
           tween.delay(1000);
           tween.onUpdate(() => {
